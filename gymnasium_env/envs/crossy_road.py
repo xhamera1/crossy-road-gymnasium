@@ -110,6 +110,7 @@ class CrossyRoadEnv(gym.Env):
             grid = self._last_obs if self.observation_mode == "grid" else self._last_obs["grid"]
             self.pygame_renderer.render(
                 grid=grid,
+                score=self.engine.score,
                 background_grid=self.engine.base_grid(),
                 lane_directions=self.engine.lane_directions(),
             )

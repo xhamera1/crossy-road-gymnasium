@@ -18,10 +18,12 @@ class PygameRenderer:
     def __init__(self, config: GameConfig, fps: int):
         self.config = config
         self.fps = fps
+        self.hud_height = max(42, config.window_size // 12)
         self.window = None
         self.clock = None
         self.window_closed = False
         self.sprites_loaded = False
+        self.font = None
         self.agent_sprite = None
         self.car_sprites = []
         self.car_sprite_indices: dict[tuple[int, int], int] = {}
@@ -33,10 +35,15 @@ class PygameRenderer:
         if self.window is None:
             pygame.init()
             pygame.display.init()
-            self.window = pygame.display.set_mode((self.config.window_size, self.config.window_size))
+            self.window = pygame.display.set_mode(
+                (self.config.window_size, self.config.window_size + self.hud_height)
+            )
             pygame.display.set_caption("Crossy Road Gymnasium")
         if self.clock is None:
             self.clock = pygame.time.Clock()
+        if self.font is None:
+            pygame.font.init()
+            self.font = pygame.font.Font(None, max(28, self.hud_height - 14))
         if not self.sprites_loaded:
             self._load_sprites(pygame)
         return pygame
@@ -93,6 +100,7 @@ class PygameRenderer:
     def render(
         self,
         grid: np.ndarray,
+        score: int,
         background_grid: np.ndarray | None = None,
         lane_directions: np.ndarray | None = None,
     ) -> None:
@@ -106,8 +114,12 @@ class PygameRenderer:
                 self.close()
                 return
 
-        canvas = pygame.Surface((self.config.window_size, self.config.window_size))
+        canvas = pygame.Surface((self.config.window_size, self.config.window_size + self.hud_height))
         canvas.fill((36, 40, 48))
+        self._draw_hud(pygame, canvas, score)
+
+        board = pygame.Surface((self.config.window_size, self.config.window_size))
+        board.fill((36, 40, 48))
 
         h, w = grid.shape
         cell_w = self.config.window_size / w
@@ -139,12 +151,12 @@ class PygameRenderer:
                 background_tile = CellID(int(background_grid[y, x])) if background_grid is not None else tile
                 if tile == CellID.CAR:
                     background_tile = CellID.ROAD
-                pygame.draw.rect(canvas, palette[background_tile], rect)
+                pygame.draw.rect(board, palette[background_tile], rect)
                 if sprite is not None:
                     scaled = pygame.transform.scale(sprite, rect.size)
                     if tile == CellID.CAR and lane_directions is not None and int(lane_directions[y]) == 2:
                         scaled = pygame.transform.flip(scaled, True, False)
-                    canvas.blit(scaled, rect)
+                    board.blit(scaled, rect)
                 elif tile in {CellID.CAR, CellID.AGENT, CellID.LILY_PAD}:
                     inset = pygame.Rect(
                         int(x * cell_w + cell_w * 0.15),
@@ -152,13 +164,27 @@ class PygameRenderer:
                         int(cell_w * 0.7),
                         int(cell_h * 0.7),
                     )
-                    pygame.draw.rect(canvas, (245, 245, 245), inset, border_radius=6)
+                    pygame.draw.rect(board, (245, 245, 245), inset, border_radius=6)
 
         self.car_sprite_indices = car_sprite_indices
 
+        canvas.blit(board, (0, self.hud_height))
         self.window.blit(canvas, canvas.get_rect())
         pygame.display.update()
         self.clock.tick(self.fps)
+
+    def _draw_hud(self, pygame, canvas, score: int) -> None:
+        pygame.draw.rect(canvas, (23, 26, 32), pygame.Rect(0, 0, self.config.window_size, self.hud_height))
+        pygame.draw.line(
+            canvas,
+            (73, 79, 91),
+            (0, self.hud_height - 1),
+            (self.config.window_size, self.hud_height - 1),
+            1,
+        )
+        text = self.font.render(f"Distance: {score}", True, (245, 247, 250))
+        text_rect = text.get_rect(midleft=(16, self.hud_height // 2))
+        canvas.blit(text, text_rect)
 
     def close(self):
         if self.window is not None:
@@ -168,3 +194,4 @@ class PygameRenderer:
             pygame.quit()
         self.window = None
         self.clock = None
+        self.font = None
