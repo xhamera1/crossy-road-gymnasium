@@ -16,7 +16,7 @@ if __name__ == "__main__":
         observation_mode="large_discrete",
     )
     obs, info = env.reset(seed=42)
-    agent = StrategicCrossyAgent(width=8, height=14)
+    agent = StrategicCrossyAgent(width=8, height=50)
 
     print(f"Starting episode (render_mode={RENDER_MODE})")
     if RENDER_MODE == "ansi":

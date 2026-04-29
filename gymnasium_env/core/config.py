@@ -6,7 +6,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class GameConfig:
     width: int = 8
-    height: int = 14
+    height: int = 50
     window_size: int = 600
     reward_forward: int = 1
     reward_death: int = -100

@@ -20,7 +20,7 @@ class LaneFactory:
             return Lane(terrain=TerrainType.GRASS)
 
         direction = int(rng.choice([-1, 1]))
-        move_interval = int(rng.choice(self.config.lane_speed_values))
+        move_interval = 1 if terrain == TerrainType.ROAD else int(rng.choice(self.config.lane_speed_values))
         density = self._density_for_terrain(terrain, rng)
         actors = {x for x in range(self.config.width) if rng.random() < density}
         actors = self._normalize_actor_count(terrain=terrain, actors=actors, rng=rng)

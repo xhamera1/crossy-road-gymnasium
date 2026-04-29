@@ -17,7 +17,7 @@ class CrossyRoadEnv(gym.Env):
         self,
         render_mode: Optional[str] = None,
         width: int = 8,
-        height: int = 14,
+        height: int = 50,
         observation_mode: str = "large_discrete",
         window_size: int = 600,
     ):

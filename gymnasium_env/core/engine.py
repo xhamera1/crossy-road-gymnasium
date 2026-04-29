@@ -73,6 +73,7 @@ class CrossyRoadEngine:
         if current.terrain == TerrainType.RIVER and lane_shift != 0:
             self.agent_x += lane_shift
             if not (0 <= self.agent_x < self.config.width):
+                self.agent_x = min(max(self.agent_x, 0), self.config.width - 1)
                 self.terminated = True
                 return self.config.reward_death, True
 

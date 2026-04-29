@@ -11,7 +11,7 @@ class StrategicCrossyAgent:
     """Rule-based agent with deterministic strategy (no random actions)."""
 
     width: int = 8
-    height: int = 14
+    height: int = 50
 
     def act(self, observation: Any) -> int:
         grid = observation["grid"] if isinstance(observation, dict) else observation
@@ -102,8 +102,8 @@ class StrategicCrossyAgent:
         lane_speeds: np.ndarray,
     ) -> int:
         direction_enc = int(lane_dirs[ny])  # 0 left, 1 static, 2 right
-        speed = int(lane_speeds[ny])        # 0 grass, 2..3 moving lane
-        if speed <= 1:
+        speed = int(lane_speeds[ny])        # 0 grass, 1+ moving lane
+        if speed <= 0:
             return 0
 
         direction = -1 if direction_enc == 0 else 1 if direction_enc == 2 else 0

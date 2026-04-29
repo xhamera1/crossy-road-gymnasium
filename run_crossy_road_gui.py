@@ -17,7 +17,7 @@ if __name__ == "__main__":
         render_mode="human",
         observation_mode="large_discrete",
     )
-    agent = StrategicCrossyAgent(width=8, height=14)
+    agent = StrategicCrossyAgent(width=8, height=50)
 
     print("GUI mode started.")
     print("Controls:")

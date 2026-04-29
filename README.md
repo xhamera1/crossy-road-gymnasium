@@ -17,7 +17,7 @@ Custom Gymnasium environment for a simplified Crossy Road game.
   - registration in `gymnasium_env/__init__.py`
   - env ID: `gymnasium_env/CrossyRoad-v0`
 - Core game mechanics:
-  - grid `8 x 14`
+  - grid `8 x 50`
   - terrains: Grass, Road, River
   - dynamic entities: Cars and Lily pads
   - scrolling world on forward move
@@ -25,7 +25,7 @@ Custom Gymnasium environment for a simplified Crossy Road game.
 - Action space:
   - `Discrete(4)` with mapping `0=Up`, `1=Down`, `2=Left`, `3=Right`
 - Observation modes:
-  - `grid`: basic matrix `(14, 8)` with IDs `0..5`
+  - `grid`: basic matrix `(50, 8)` with IDs `0..5`
   - `large_discrete` (default, recommended):
     - `grid` (full board),
     - `lane_directions` (`MultiDiscrete([3] * height)`),
