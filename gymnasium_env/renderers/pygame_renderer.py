@@ -178,6 +178,17 @@ class PygameRenderer:
                 elif tile == CellID.LILY_PAD or background_tile == CellID.LILY_PAD:
                     background_tile = CellID.RIVER
                 pygame.draw.rect(board, palette[background_tile], rect)
+                if tile == CellID.AGENT and background_grid is not None:
+                    underlay_tile = CellID(int(background_grid[y, x]))
+                    underlay_sprite, _ = self._sprite_for(
+                        underlay_tile,
+                        x,
+                        y,
+                        grid.shape[1],
+                        used_previous,
+                    )
+                    if underlay_sprite is not None:
+                        board.blit(pygame.transform.scale(underlay_sprite, rect.size), rect)
                 if sprite is not None:
                     scaled = pygame.transform.scale(sprite, rect.size)
                     if tile == CellID.CAR and lane_directions is not None and int(lane_directions[y]) == 2:
