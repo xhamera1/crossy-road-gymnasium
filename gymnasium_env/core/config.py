@@ -7,7 +7,7 @@ from dataclasses import dataclass
 class GameConfig:
     width: int = 8
     height: int = 14
-    window_size: int = 900
+    window_size: int = 600
     reward_forward: int = 1
     reward_death: int = -100
     terrain_probs: tuple[float, float, float] = (0.45, 0.33, 0.22)  # grass, road, river
