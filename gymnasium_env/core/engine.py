@@ -14,10 +14,13 @@ class CrossyRoadEngine:
         self.factory = LaneFactory(config=config)
         self.lanes: list[Lane] = []
         self.agent_x = config.width // 2
-        self.agent_y = 0
+        self.agent_y = self._bottom_buffer_row()
         self.score = 0
         self.steps = 0
         self.terminated = False
+
+    def _bottom_buffer_row(self) -> int:
+        return min(1, self.config.height - 1)
 
     def reset(self, rng: np.random.Generator) -> None:
         safe_rows = min(self.config.safe_start_rows, self.config.height)
@@ -25,7 +28,7 @@ class CrossyRoadEngine:
         for _ in range(self.config.height - safe_rows):
             self.lanes.append(self.factory.create_lane(rng))
         self.agent_x = self.config.width // 2
-        self.agent_y = 0
+        self.agent_y = self._bottom_buffer_row()
         self.score = 0
         self.steps = 0
         self.terminated = False
@@ -36,7 +39,7 @@ class CrossyRoadEngine:
     def _scroll_world(self, rng: np.random.Generator) -> None:
         self.lanes.pop(0)
         self.lanes.append(self.factory.create_lane(rng))
-        self.agent_y = max(0, self.agent_y - 1)
+        self.agent_y = max(self._bottom_buffer_row(), self.agent_y - 1)
 
     def step(self, action: int, rng: np.random.Generator) -> tuple[int, bool]:
         if self.terminated:
@@ -53,7 +56,7 @@ class CrossyRoadEngine:
         if self._in_bounds(next_x, next_y):
             self.agent_x = next_x
             self.agent_y = next_y
-            moved_forward = dy > 0
+            moved_forward = dy > 0 and self.agent_y > self._bottom_buffer_row()
 
         if moved_forward:
             reward = self.config.reward_forward
@@ -82,7 +85,7 @@ class CrossyRoadEngine:
 
         return reward, False
 
-    def grid_observation(self) -> np.ndarray:
+    def base_grid(self) -> np.ndarray:
         grid = np.zeros((self.config.height, self.config.width), dtype=np.int32)
         for y, lane in enumerate(self.lanes):
             if lane.terrain == TerrainType.GRASS:
@@ -95,6 +98,10 @@ class CrossyRoadEngine:
                 grid[y, :] = CellID.RIVER
                 for x in lane.actors:
                     grid[y, x] = CellID.LILY_PAD
+        return grid
+
+    def grid_observation(self) -> np.ndarray:
+        grid = self.base_grid()
         grid[self.agent_y, self.agent_x] = CellID.AGENT
         return grid
 

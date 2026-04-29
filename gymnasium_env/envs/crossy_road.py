@@ -108,7 +108,11 @@ class CrossyRoadEnv(gym.Env):
             if self.pygame_renderer is None:
                 self.pygame_renderer = PygameRenderer(config=self.config, fps=self.metadata["render_fps"])
             grid = self._last_obs if self.observation_mode == "grid" else self._last_obs["grid"]
-            self.pygame_renderer.render(grid=grid)
+            self.pygame_renderer.render(
+                grid=grid,
+                background_grid=self.engine.base_grid(),
+                lane_directions=self.engine.lane_directions(),
+            )
         except ModuleNotFoundError as exc:
             raise ModuleNotFoundError(
                 "pygame is required for human rendering. Install with `pip install pygame`."
