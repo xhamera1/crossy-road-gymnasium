@@ -1,211 +1,242 @@
 # crossy-road-gymnasium
 
-Custom Gymnasium environment for a simplified Crossy Road game.
+A custom Gymnasium environment imitating a simplified Crossy Road game, together with a **trained PPO agent** (Stable-Baselines3) and a deterministic rule-based agent as a baseline.
 
-## Status (requirements 6/8)
+## Demo gameplay — trained agent in action (YouTube)
 
-- [x] Custom Gymnasium environment (`CrossyRoadEnv`)
-- [x] Large discrete observation space (`observation_mode="large_discrete"`)
-- [x] Agent playing the game (`StrategicCrossyAgent` in `crossy_agent.py`)
-- [x] Agent uses deterministic strategy (not random)
-- [x] Graphical mode (`render_mode="human"`) with Pygame
-- [x] Trained ML agent (PPO from Stable-Baselines3) with learning curves
+ A short **demo video** — a trained PPO agent (the `best_model.zip` model from `EvalCallback`) plays in the Pygame GUI with real graphics (chicken, cars, river, lily pads). The recording shows the agent's strategy: when it moves forward, when it waits on the road, and when it dodges sideways.
 
-## Implemented Features
+> **Video link**: [https://youtu.be/M1ANcz5gUqU](https://youtu.be/M1ANcz5gUqU)
 
-- Environment package structure:
-  - `gymnasium_env/envs/crossy_road.py`
-  - registration in `gymnasium_env/__init__.py`
-  - env ID: `gymnasium_env/CrossyRoad-v0`
-- Core game mechanics:
-  - grid `8 x 50`
-  - terrains: Grass, Road, River
-  - dynamic entities: Cars and Lily pads
-  - scrolling world on forward move
-  - rewards: `+1` forward, `0` lateral/back, `-100` on death
-- Action space:
-  - `Discrete(4)` with mapping `0=Up`, `1=Down`, `2=Left`, `3=Right`
-- Observation modes:
-  - `grid`: basic matrix `(50, 8)` with IDs `0..5`
-  - `large_discrete` (default, used by the rule-based agent):
-    - `grid` (full board),
-    - `lane_directions` (`MultiDiscrete([3] * height)`),
-    - `lane_speeds` (`MultiDiscrete([4] * height)`),
-    - `agent_position` (`MultiDiscrete([height, width])`)
-  - `local` (used by the PPO trained agent): cropped to `view_height=10`
-    nearest rows plus their dynamics. ~160-dim observation instead of ~808,
-    forces the policy to focus on the agent's neighborhood.
-- Rendering:
-  - `ansi`: text mode in terminal
-  - `human`: graphical window (Pygame, richer tile renderer)
-- Agent:
-  - deterministic risk-aware policy,
-  - prioritizes safe forward progress and avoids hazards
-- Modular architecture (professional structure):
-  - `gymnasium_env/core/` -> config, constants, entities, lane factory, engine
-  - `gymnasium_env/renderers/` -> ANSI and Pygame render backends
-  - `gymnasium_env/envs/` -> Gymnasium wrapper API layer
+## Results
 
-## Quick Start
+Training **PPO for 300,000 timesteps** (~17.5 min on CPU) with a best-checkpoint selection mechanism from 17 saved models gives results **competitive with the rule-based agent** despite using a 5× smaller observation (`local`, ~160 features vs ~808):
 
-### 1) Create virtual environment
+### Deterministic evaluation, N=50 episodes
 
-```bash
-python -m venv .venv
-```
 
-### 2) Activate virtual environment
+| metric          | PPO (trained) | StrategicCrossyAgent | Delta (PPO - rule)          |
+| --------------- | ------------- | -------------------- | --------------------------- |
+| **mean score**  | 9.66          | 10.24                | -0.58 *(94% of rule level)* |
+| median score    | 6.0           | 7.5                  | -1.5                        |
+| **max score**   | **45**        | 40                   | **+5** ✓                    |
+| std score       | 8.66          | 7.87                 | +0.79                       |
+| **mean reward** | +2.657        | +3.317               | -0.66                       |
+| **max reward**  | **+34.05**    | +30.40               | **+3.65** ✓                 |
+| min reward      | **-4.30**     | -4.60                | +0.30 ✓                     |
+| mean length     | 13.00         | 14.84                | -1.84                       |
 
-Git Bash (MINGW64):
 
-```bash
-source .venv/Scripts/activate
-```
+PPO **beats the rule-based baseline on peaks** (max score 45, max reward +34.05), while also being **more stable in the lower tail** (min reward -4.30 vs -4.60), and its average reaches 94% of the deterministic heuristic level. Full analysis is in `trening.ipynb` (section 9).
 
-PowerShell:
+### Final training metrics (300k timesteps)
+
+
+| Metric                     | Value              |
+| -------------------------- | ------------------ |
+| `eval/mean_reward`         | **+4.62 +/- 7.07** |
+| `eval/mean_ep_length`      | 15.1 +/- 10.9      |
+| `train/explained_variance` | 0.26               |
+| `train/entropy_loss`       | -0.90              |
+| Training time              | 1057 s ~ 17.5 min  |
+
+
+## Notebook — `trening.ipynb`
+
+The **complete project delivery** is the `trening.ipynb` notebook, which includes:
+
+- an inline Gymnasium environment definition (self-contained, works in Colab),
+- a full PPO training pipeline,
+- learning curves from `Monitor` CSV,
+- quantitative evaluation N=50 vs the rule-based agent,
+- automatic selection of the best checkpoint (section 5.3),
+- the history of 4 reward-shaping iterations,
+- analysis and final conclusions.
+
+The notebook is most convenient to open with the `.venv (Python 3.12)` kernel — installing `ipykernel` may be required on first open.
+
+## Quick start
+
+### 1. Virtual environment (Python 3.10-3.12)
+
+`stable-baselines3` **does not support Python 3.13/3.14**. If `python --version` shows `3.13`+, install 3.12:
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1            # PowerShell
+# source .venv/Scripts/activate         # Git Bash
 ```
 
-### 3) Install dependencies
-
-Option A (recommended, package mode):
+### 2. Install dependencies
 
 ```bash
 pip install -e .
+# or: pip install -r requirements.txt
 ```
 
-Option B (requirements file):
+Dependency list: `gymnasium`, `numpy`, `pygame`, `stable-baselines3`, `matplotlib`, `pandas`, `tensorboard`.
+
+### 3. Run the trained agent in GUI
+
+The repository already contains trained models in `models/`:
 
 ```bash
-pip install -r requirements.txt
+python play_trained_gui.py --auto
 ```
 
-Recommended Python version for GUI: `3.10-3.12` (Pygame support is more stable than on `3.14`).
+**Controls**: `SPACE` = one step, `A` = toggle auto-play, `R` = reset episode, `ESC` = quit.
 
-### 4) Run demo (agent + environment)
+### 4. (Optional) Open the training notebook
 
 ```bash
-python run_crossy_road.py
+jupyter notebook trening.ipynb
+# or open the file in Cursor / VS Code
 ```
 
-### 5) Run graphical mode (Pygame window)
+## Running — all scripts
+
+### Rule-based agent (baseline)
 
 ```bash
-python run_crossy_road_gui.py
+python run_crossy_road.py          # ANSI mode in terminal
+python run_crossy_road_gui.py      # Pygame GUI
 ```
 
-This command opens a game window.  
-If no window appears, verify that `pygame` is installed and that you are not using Python 3.14.
-
-GUI controls (`run_crossy_road_gui.py`):
-- `SPACE` - one agent move (step-by-step observation)
-- `R` - reset current episode
-- `ESC` - quit the app
-- After death, episode restarts automatically (auto-restart)
-
-## Machine learning (PPO trained agent)
-
-The repository ships with a full reinforcement learning pipeline based on
-[Stable-Baselines3](https://stable-baselines3.readthedocs.io). The trained
-agent learns from scratch — there is no hand-written strategy involved — and
-the training process produces learning curves you can inspect.
-
-### Important: Python version
-
-`stable-baselines3` requires **Python 3.10 - 3.12** (it does not support
-Python 3.13 or 3.14). If `python --version` reports `3.13` or `3.14`, create
-a fresh venv with the right interpreter, e.g.:
+### PPO training (CLI script, alternative to notebook)
 
 ```bash
-py -3.12 -m venv .venv
-source .venv/Scripts/activate     # Git Bash
-# .\.venv\Scripts\Activate.ps1    # PowerShell
-pip install -e .                  # installs SB3, matplotlib, tensorboard, ...
-```
-
-### Train the agent
-
-```bash
-python train_ppo.py                              # 200_000 timesteps, 4 envs
-python train_ppo.py --timesteps 500000 --n-envs 8
+python train_ppo.py                                # 200k timesteps (default), 4 envs
+python train_ppo.py --timesteps 300000             # recommended (~17 min CPU)
+python train_ppo.py --timesteps 500000 --n-envs 8  # more exploration
 ```
 
 Training produces:
 
-- `models/ppo_crossy_final.zip` - final PPO model
-- `models/best/best_model.zip`  - best model selected by `EvalCallback`
-- `models/checkpoints/`         - periodic checkpoints
-- `training_logs/monitor_*.csv` - per-episode reward / length / time
-- `training_logs/tensorboard/`  - TensorBoard logs
-- `training_logs/learning_curves.png` - learning curves rendered with matplotlib
+- `models/ppo_crossy_final.zip` — final model (last iteration)
+- `models/best/best_model.zip` — best model selected by `EvalCallback`
+- `models/checkpoints/ppo_crossy_*_steps.zip` — checkpoints every 20,000 steps
+- `training_logs/monitor_*.csv` — per-episode (reward / length / time)
+- `training_logs/tensorboard/` — TensorBoard logs
+- `training_logs/learning_curves.png` — matplotlib plots
 
-Live training metrics (mean reward, episode length, value loss, etc.):
+### TensorBoard (live monitoring during training)
 
 ```bash
 tensorboard --logdir training_logs/tensorboard
 ```
 
-### Re-render the learning curves any time
+### Learning-curve plots (if monitor CSV files exist)
 
 ```bash
 python plot_learning_curves.py
 python plot_learning_curves.py --window 100 --show
 ```
 
-### Watch the trained agent play
+### Trained agent in Pygame GUI
 
 ```bash
-python play_trained_gui.py                   # opens Pygame window
-python play_trained_gui.py --auto            # auto-play from start
-python play_trained_gui.py --model models/best/best_model.zip
+python play_trained_gui.py                                                      # default model + step mode
+python play_trained_gui.py --auto                                               # auto-play immediately
+python play_trained_gui.py --auto --model models/best/best_model.zip            # specific file
+python play_trained_gui.py --auto --stochastic                                  # sampling instead of greedy
+python play_trained_gui.py --auto --fps 4                                       # slower
 ```
 
-### Quantitative evaluation (N episodes)
+### Quantitative evaluation (N episodes + histograms)
 
 ```bash
 python evaluate.py --episodes 50              # PPO only
-python evaluate.py --episodes 50 --baseline   # PPO vs rule-based comparison
+python evaluate.py --episodes 50 --baseline   # PPO vs rule-based + comparative bar chart
 ```
 
-Generates per-episode statistics (mean / median / max / std for score, reward,
-length) and saves histograms to `training_logs/evaluation.png`.
+Output is saved to `training_logs/evaluation.png` plus statistics in stdout.
 
-GUI controls (`play_trained_gui.py`):
-- `SPACE` - one step of the trained agent
-- `A`     - toggle auto-play
-- `R`     - reset current episode
-- `ESC`   - quit
+## Crossy Road environment
 
-The rule-based `StrategicCrossyAgent` (in `run_crossy_road.py` /
-`run_crossy_road_gui.py`) is kept as a deterministic baseline for comparison.
+### Board and tiles
 
-## Files
+- **Dimensions**: 50 rows x 8 columns (world scrolls forward on UP move).
+- **Tiles**: grass (safe), road (with cars, fatal collision), river (fatal if not standing on a lily pad).
+- **Bottom-buffer**: the bottom row is a "trail" — the agent always sees where it came from.
 
-- `gymnasium_env/core/config.py` - game constants and tuning
-- `gymnasium_env/core/engine.py` - main game simulation engine
-- `gymnasium_env/core/generator.py` - lane and obstacle generation
-- `gymnasium_env/renderers/pygame_renderer.py` - graphical renderer
-- `gymnasium_env/renderers/ansi_renderer.py` - terminal renderer
-- `gymnasium_env/envs/crossy_road.py` - Gymnasium API integration layer
-- `crossy_agent.py` - strategic agent
-- `run_crossy_road.py` - ANSI simulation script (rule-based baseline)
-- `run_crossy_road_gui.py` - GUI simulation script (rule-based baseline)
-- `train_ppo.py` - PPO training pipeline (Stable-Baselines3)
-- `plot_learning_curves.py` - generates `training_logs/learning_curves.png`
-- `play_trained_gui.py` - run the trained PPO agent in the Pygame window
-- `evaluate.py` - N-episode evaluation with histograms (`evaluation.png`)
-- `pyproject.toml` / `requirements.txt` - dependencies
+### Actions
 
-```python
-import gymnasium as gym
-import gymnasium_env
+`Discrete(4)` — `0=UP`, `1=DOWN`, `2=LEFT`, `3=RIGHT`.
 
-env = gym.make(
-    "gymnasium_env/CrossyRoad-v0",
-    render_mode="ansi",
-    observation_mode="large_discrete",
-)
-obs, info = env.reset(seed=42)
+### Observation modes
+
+
+| mode             | shape               | usage                                    |
+| ---------------- | ------------------- | ---------------------------------------- |
+| `grid`           | `(50, 8)`           | simple matrix, for convolutional agents  |
+| `large_discrete` | dict, ~808 features | `**StrategicCrossyAgent`** (rule-based)  |
+| `local`          | dict, ~160 features | **PPO** — cropped to the 10 nearest rows |
+
+
+### Reward shape (after 4 iteration rounds)
+
+
+| reward            | value   | role                                                                           |
+| ----------------- | ------- | ------------------------------------------------------------------------------ |
+| `reward_forward`  | `+1.0`  | bonus for a successful UP move (with scrolling)                                |
+| `reward_step`     | `-0.1`  | per-step penalty — discourages standing still (200 standing steps = -20)       |
+| `reward_death`    | `-5.0`  | death (car/drowning/pushed off-board by current)                               |
+| `reward_survival` | `+0.05` | bonus for surviving a step on road/river — allows actually *waiting* for a gap |
+
+
+Full history of the 4 reward-shaping iterations (from `+1/0/-100`, which taught standing still, to the current shape) — in the notebook, section 8.
+
+### PPO hyperparameters
+
 ```
+algorithm:        PPO (Stable-Baselines3 v2.8)
+policy:           MultiInputPolicy + net_arch=[256, 256]
+n_envs:           4 (DummyVecEnv)
+n_steps:          512
+batch_size:       128
+n_epochs:         10
+learning_rate:    linear schedule 3e-4 -> 0
+gamma:            0.99
+gae_lambda:       0.95
+clip_range:       0.2
+ent_coef:         0.1   (strong exploration)
+total_timesteps:  300_000
+max_episode_steps: 200
+seed:             0
+```
+
+## Project architecture
+
+```
+crossy-road-gymnasium/
+├── gymnasium_env/
+│   ├── core/                    # game logic (env-agnostic)
+│   │   ├── config.py            # GameConfig (dimensions, reward shape, probabilities)
+│   │   ├── constants.py         # CellID, ActionID, ACTION_DELTAS, ANSI_SYMBOLS
+│   │   ├── entities.py          # Lane (board lane)
+│   │   ├── generator.py         # LaneFactory (random lane generation)
+│   │   └── engine.py            # CrossyRoadEngine (game step, observations, collisions)
+│   ├── renderers/
+│   │   ├── ansi_renderer.py     # terminal rendering
+│   │   └── pygame_renderer.py   # Pygame GUI with graphics (chicken, cars, river)
+│   ├── envs/
+│   │   └── crossy_road.py       # CrossyRoadEnv (Gymnasium API wrapper)
+│   └── __init__.py              # registration `gymnasium_env/CrossyRoad-v0`
+├── crossy_agent.py              # StrategicCrossyAgent (rule-based baseline)
+├── run_crossy_road.py           # ANSI demo with rule-based agent
+├── run_crossy_road_gui.py       # GUI demo with rule-based agent
+├── train_ppo.py                 # PPO training (CLI)
+├── play_trained_gui.py          # GUI with trained agent
+├── evaluate.py                  # evaluation N episodes + histograms
+├── plot_learning_curves.py      # plots from monitor CSV
+├── trening.ipynb                # ★ PROJECT DELIVERY ★ — everything in one notebook
+├── models/                      # trained models
+│   ├── ppo_crossy_final.zip     # default loaded by play_trained_gui.py
+│   ├── best/best_model.zip      # best model from EvalCallback
+│   └── checkpoints/             # snapshot every 20k steps
+├── training_logs/               # monitor CSV + TensorBoard + PNG
+├── pyproject.toml
+├── requirements.txt
+└── README.md
+```
+
