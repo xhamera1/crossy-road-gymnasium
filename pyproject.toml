@@ -7,11 +7,15 @@ name = "gymnasium_env"
 version = "0.0.1"
 description = "Custom Gymnasium Crossy Road environment"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 dependencies = [
     "gymnasium>=0.29.0",
     "numpy>=1.24.0",
     "pygame>=2.5.0",
+    "stable-baselines3>=2.3.0",
+    "matplotlib>=3.7.0",
+    "pandas>=2.0.0",
+    "tensorboard>=2.13.0",
 ]
 
 [tool.hatch.build.targets.wheel]

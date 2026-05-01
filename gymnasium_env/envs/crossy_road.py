@@ -20,9 +20,11 @@ class CrossyRoadEnv(gym.Env):
         height: int = 50,
         observation_mode: str = "large_discrete",
         window_size: int = 600,
+        view_height: int = 10,
     ):
         self.render_mode = render_mode
         self.observation_mode = observation_mode
+        self.view_height = min(view_height, height)
         self.config = GameConfig(width=width, height=height, window_size=window_size)
 
         if observation_mode == "grid":
@@ -46,8 +48,25 @@ class CrossyRoadEnv(gym.Env):
                     "agent_position": spaces.MultiDiscrete([height, width]),
                 }
             )
+        elif observation_mode == "local":
+            # Cropped: tylko view_height najnizszych rzedow + dynamika pasow.
+            # ~5x mniejsza obserwacja niz "large_discrete" (160 vs 808 cech po one-hot),
+            # agent skupia sie na otoczeniu.
+            self.observation_space = spaces.Dict(
+                {
+                    "grid": spaces.Box(
+                        low=0,
+                        high=int(CellID.AGENT),
+                        shape=(self.view_height, width),
+                        dtype=np.int32,
+                    ),
+                    "lane_directions": spaces.MultiDiscrete([3] * self.view_height),
+                    "lane_speeds": spaces.MultiDiscrete([4] * self.view_height),
+                    "agent_position": spaces.MultiDiscrete([2, width]),
+                }
+            )
         else:
-            raise ValueError("observation_mode must be 'grid' or 'large_discrete'")
+            raise ValueError("observation_mode must be 'grid', 'large_discrete' or 'local'")
 
         self.action_space = spaces.Discrete(4)
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -58,9 +77,11 @@ class CrossyRoadEnv(gym.Env):
         self._last_obs: Optional[Any] = None
 
     def _build_observation(self):
-        grid = self.engine.grid_observation()
         if self.observation_mode == "grid":
-            return grid
+            return self.engine.grid_observation()
+        if self.observation_mode == "local":
+            return self.engine.local_observation(self.view_height)
+        grid = self.engine.grid_observation()
         return {
             "grid": grid,
             "lane_directions": self.engine.lane_directions(),
@@ -107,7 +128,9 @@ class CrossyRoadEnv(gym.Env):
         try:
             if self.pygame_renderer is None:
                 self.pygame_renderer = PygameRenderer(config=self.config, fps=self.metadata["render_fps"])
-            grid = self._last_obs if self.observation_mode == "grid" else self._last_obs["grid"]
+            # Renderer chce zawsze pelny grid (50 rzedow) niezaleznie od observation_mode --
+            # cropped obs jest wylacznie dla agenta.
+            grid = self.engine.grid_observation()
             self.pygame_renderer.render(
                 grid=grid,
                 score=self.engine.score,
